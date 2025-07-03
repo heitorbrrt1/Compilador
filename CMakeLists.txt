@@ -3,4 +3,7 @@ project(compilador C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(compilador main.c)
+add_executable(compilador main.c
+        analisador.c
+        main.c
+        compilador.h)
