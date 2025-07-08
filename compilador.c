@@ -14,12 +14,12 @@ int alerta_memoria_emitido = 0;
 
 void* alocar_memoria(size_t tamanho) {
     if (memoria_alocada_atual + tamanho > MEMORIA_TOTAL_DISPONIVEL) {
-        fprintf(stderr, "ERRO FATAL: Tentativa de alocação excede a memória máxima. Memória Insuficiente.\n");
+        fprintf(stderr, "ERRO FATAL: Tentativa de alocacao excede a memoria maxima. Memoria Insuficiente.\n");
         exit(EXIT_FAILURE);
     }
     void* ptr = malloc(tamanho);
     if (ptr == NULL) {
-        fprintf(stderr, "ERRO FATAL: Falha ao alocar memória com malloc. Memória Insuficiente.\n");
+        fprintf(stderr, "ERRO FATAL: Falha ao alocar memoria com malloc. Memoria Insuficiente.\n");
         exit(EXIT_FAILURE);
     }
     memoria_alocada_atual += tamanho;
@@ -28,7 +28,7 @@ void* alocar_memoria(size_t tamanho) {
     }
     double percentual_uso = (double)memoria_alocada_atual / MEMORIA_TOTAL_DISPONIVEL;
     if (percentual_uso >= 0.9 && percentual_uso < 1.0 && !alerta_memoria_emitido) {
-        printf("ALERTA: Uso de memória atingiu %.2f%% da capacidade total.\n", percentual_uso * 100);
+        printf("ALERTA: Uso de memoria atingiu %.2f%% da capacidade total.\n", percentual_uso * 100);
         alerta_memoria_emitido = 1;
     }
     return ptr;
@@ -196,7 +196,7 @@ Token obter_proximo_token() {
             case '"':
                 i = 0;
                 while((c = proximo_char()) != '"' && c != EOF && i < 255) buffer[i++] = c;
-                if (c == EOF) return criar_token(TOKEN_ERRO, "String literal não fechada", linha_atual);
+                if (c == EOF) return criar_token(TOKEN_ERRO, "String literal nao fechada", linha_atual);
                 buffer[i] = '\0';
                 return criar_token(TOKEN_LITERAL_TEXTO, buffer, linha_atual);
             default: ;
@@ -206,7 +206,7 @@ Token obter_proximo_token() {
             buffer[i++] = c;
             c = proximo_char();
             if (!islower(c)) {
-                sprintf(buffer, "Nome de variável inválido na linha %d. Esperado a-z após '!'.", linha_atual);
+                sprintf(buffer, "Nome de variavel invalido na linha %d. Esperado a-z apos '!'.", linha_atual);
                 return criar_token(TOKEN_ERRO, buffer, linha_atual);
             }
             buffer[i++] = c;
@@ -239,12 +239,12 @@ Token obter_proximo_token() {
             TipoToken tipo_reservado = verificar_palavra_reservada(buffer);
             if (tipo_reservado != TOKEN_ERRO) return criar_token(tipo_reservado, buffer, linha_atual);
             char erro_msg[512];
-            sprintf(erro_msg, "Identificador ou palavra reservada inválida '%s' na linha %d.", buffer, linha_atual);
+            sprintf(erro_msg, "Identificador ou palavra reservada invalida '%s' na linha %d.", buffer, linha_atual);
             return criar_token(TOKEN_ERRO, erro_msg, linha_atual);
         }
         char erro_msg[512];
-        if (isprint(c)) sprintf(erro_msg, "Caractere não reconhecido '%c' na linha %d.", c, linha_atual);
-        else sprintf(erro_msg, "Caractere não reconhecido (ASCII: %d) na linha %d.", c, linha_atual);
+        if (isprint(c)) sprintf(erro_msg, "Caractere nao reconhecido '%c' na linha %d.", c, linha_atual);
+        else sprintf(erro_msg, "Caractere nao reconhecido (ASCII: %d) na linha %d.", c, linha_atual);
         return criar_token(TOKEN_ERRO, erro_msg, linha_atual);
     }
     return criar_token(TOKEN_FIM_DE_ARQUIVO, "EOF", linha_atual);

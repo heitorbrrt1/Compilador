@@ -8,7 +8,7 @@ int main() {
         return 1;
     }
 
-    printf("Iniciando análise léxica...\n\n");
+    printf("Iniciando analise lexica...\n\n");
     printf("%-10s | %-30s | %s\n", "LINHA", "TIPO DE TOKEN", "LEXEMA");
     printf("-----------------------------------------------------------------\n");
 
@@ -17,7 +17,8 @@ int main() {
         printf("%-10d | %-30s | %s\n", token.linha, tipo_token_para_str(token.tipo), token.lexema);
 
         if (token.tipo == TOKEN_ERRO) {
-            fprintf(stderr, "\nERRO LÉXICO: %s\n", token.lexema);
+            fflush(stdout);
+            fprintf(stderr, "\nERRO LEXICO: %s\n", token.lexema);
             destruir_token(token);
             break;
         }
