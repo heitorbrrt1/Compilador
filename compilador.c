@@ -202,7 +202,6 @@ Token obter_proximo_token() {
             default: ;
         }
 
-        // Tratamento de variáveis (começam com !)
         if (c == '!') {
             i = 0;
             buffer[i++] = c;
@@ -218,7 +217,6 @@ Token obter_proximo_token() {
             return criar_token(TOKEN_ID_VARIAVEL, buffer, linha_atual);
         }
 
-        // Tratamento de números
         if (isdigit(c)) {
             i = 0;
             int tem_ponto = 0;
@@ -235,23 +233,19 @@ Token obter_proximo_token() {
             return criar_token(TOKEN_LITERAL_NUMERO, buffer, linha_atual);
         }
 
-        // Tratamento de identificadores de função e palavras reservadas
         if (isalpha(c) || c == '_') {
             i = 0;
             buffer[i++] = c;
 
-            // Verificar se é um identificador de função (__nome)
             if (c == '_') {
                 if ((c = proximo_char()) == '_') {
                     buffer[i++] = c;
-                    // Após __, deve ter pelo menos um caractere alfanumérico
                     c = proximo_char();
                     if (!isalnum(c)) {
                         sprintf(buffer, "Nome de função inválido na linha %d. Esperado caractere alfanumérico após '__'.", linha_atual);
                         return criar_token(TOKEN_ERRO, buffer, linha_atual);
                     }
                     buffer[i++] = c;
-                    // Continuar lendo o resto do nome da função
                     while ((isalnum(c = proximo_char()) || c == '_') && i < 255) {
                         buffer[i++] = c;
                     }
@@ -259,33 +253,28 @@ Token obter_proximo_token() {
                     buffer[i] = '\0';
                     return criar_token(TOKEN_ID_FUNCAO, buffer, linha_atual);
                 } else {
-                    // Underscore único não é válido
                     devolver_char(c);
                     sprintf(buffer, "Identificador inválido '_' na linha %d.", linha_atual);
                     return criar_token(TOKEN_ERRO, buffer, linha_atual);
                 }
             }
 
-            // Continuar lendo palavra normal
             while ((isalnum(c = proximo_char()) || c == '_') && i < 255) {
                 buffer[i++] = c;
             }
             devolver_char(c);
             buffer[i] = '\0';
 
-            // Verificar se é palavra reservada
             TipoToken tipo_reservado = verificar_palavra_reservada(buffer);
             if (tipo_reservado != TOKEN_ERRO) {
                 return criar_token(tipo_reservado, buffer, linha_atual);
             }
 
-            // Se não é palavra reservada, é um identificador inválido
             char erro_msg[512];
             sprintf(erro_msg, "Identificador ou palavra reservada inválida '%s' na linha %d.", buffer, linha_atual);
             return criar_token(TOKEN_ERRO, erro_msg, linha_atual);
         }
 
-        // Caractere não reconhecido
         char erro_msg[512];
         if (isprint(c)) {
             sprintf(erro_msg, "Caractere não reconhecido '%c' na linha %d.", c, linha_atual);
