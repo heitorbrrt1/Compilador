@@ -1,14 +1,18 @@
 #include <stdio.h>
 #include "compilador.h"
+#include <windows.h>
 
 int main() {
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+
     arquivo_fonte = fopen("codigo_fonte.txt", "r");
     if (arquivo_fonte == NULL) {
         perror("Erro ao abrir o arquivo 'codigo_fonte.txt'");
         return 1;
     }
 
-    printf("Iniciando analise lexica...\n\n");
+    printf("Análise Léxica: \n\n");
     printf("%-10s | %-30s | %s\n", "LINHA", "TIPO DE TOKEN", "LEXEMA");
     printf("-----------------------------------------------------------------\n");
 
