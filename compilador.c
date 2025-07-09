@@ -42,11 +42,11 @@ void liberar_memoria(void* ptr, size_t tamanho) {
 }
 
 void exibir_status_memoria() {
-    printf("\n--- RELATÓRIO DE MEMÓRIA ---\n");
-    printf("Memória Total Disponível: %ld KB\n", MEMORIA_TOTAL_DISPONIVEL / 1024);
+    printf("\n------------- RELATÓRIO DE MEMÓRIA -------------\n");
+    printf("Memória Total Disponivel: %ld KB\n", MEMORIA_TOTAL_DISPONIVEL / 1024);
     printf("Pico de Memória Utilizada: %ld bytes (%.2f KB)\n", memoria_pico_utilizada, (double)memoria_pico_utilizada / 1024);
     printf("Memória Restante ao Final: %ld bytes\n", memoria_alocada_atual);
-    printf("---------------------------\n");
+    printf("------------------------------------------------\n");
 }
 
 // --- ANALISADOR LÉXICO ---
@@ -153,7 +153,6 @@ Token obter_proximo_token() {
 
     while ((c = proximo_char()) != EOF) {
         if (isspace(c)) continue;
-
         switch (c) {
             case '+': return criar_token(TOKEN_OP_SOMA, "+", linha_atual);
             case '-': return criar_token(TOKEN_OP_SUBTRACAO, "-", linha_atual);
@@ -194,55 +193,17 @@ Token obter_proximo_token() {
                     sprintf(buffer, "Caractere inesperado: '|' na linha %d", linha_atual);
                     return criar_token(TOKEN_ERRO, buffer, linha_atual);
                 }
-
-            // --- INÍCIO DA ALTERAÇÃO PARA ASPAS ---
-            case '"': // Aspas Retas
-            case 226: // Primeiro byte das Aspas Curvas (UTF-8)
-            {
-                // Verifica se é uma aspa curva de abertura “ (bytes 226, 128, 156)
-                if (c == 226) {
-                    int c2 = proximo_char();
-                    int c3 = proximo_char();
-                    if (c2 != 128 || c3 != 156) { // Não é a aspa “
-                        char erro_msg[512];
-                        sprintf(erro_msg, "Caractere UTF-8 não reconhecido na linha %d.", linha_atual);
-                        return criar_token(TOKEN_ERRO, erro_msg, linha_atual);
-                    }
-                }
-
-                // Agora, lê a string até encontrar uma aspa de fechamento (reta OU curva)
+            case '"':
                 i = 0;
-                while (i < 255) {
-                    c = proximo_char();
-                    if (c == EOF) return criar_token(TOKEN_ERRO, "String literal não fechada", linha_atual);
-
-                    // Verifica se é aspa reta de fechamento
-                    if (c == '"') break;
-
-                    // Verifica se é aspa curva de fechamento ” (bytes 226, 128, 157)
-                    if (c == 226) {
-                        int c2 = proximo_char();
-                        int c3 = proximo_char();
-                        if (c2 == 128 && c3 == 157) {
-                            break; // Encontrou a aspa curva de fechamento
-                        }
-                        // Se não era a aspa de fechamento, devolve os caracteres lidos
-                        devolver_char(c3);
-                        devolver_char(c2);
-                    }
-
-                    buffer[i++] = c;
-                }
+                while((c = proximo_char()) != '"' && c != EOF && i < 255) buffer[i++] = c;
+                if (c == EOF) return criar_token(TOKEN_ERRO, "String literal não fechada", linha_atual);
                 buffer[i] = '\0';
                 return criar_token(TOKEN_LITERAL_TEXTO, buffer, linha_atual);
-            }
-            // --- FIM DA ALTERAÇÃO PARA ASPAS ---
-
-            default: ; // Se não for nenhum dos caracteres acima, continua
+            default: ;
         }
 
-        // --- INÍCIO DA ALTERAÇÃO PARA IDENTIFICADORES E FUNÇÕES ---
-        if (c == '!') { // Regra para Variáveis
+        // Tratamento de variáveis (começam com !)
+        if (c == '!') {
             i = 0;
             buffer[i++] = c;
             c = proximo_char();
@@ -257,7 +218,8 @@ Token obter_proximo_token() {
             return criar_token(TOKEN_ID_VARIAVEL, buffer, linha_atual);
         }
 
-        if (isdigit(c)) { // Regra para Números
+        // Tratamento de números
+        if (isdigit(c)) {
             i = 0;
             int tem_ponto = 0;
             buffer[i++] = c;
@@ -273,48 +235,65 @@ Token obter_proximo_token() {
             return criar_token(TOKEN_LITERAL_NUMERO, buffer, linha_atual);
         }
 
-        if (isalpha(c) || c == '_') { // Regra para Palavras Reservadas e Nomes de Funções
+        // Tratamento de identificadores de função e palavras reservadas
+        if (isalpha(c) || c == '_') {
             i = 0;
             buffer[i++] = c;
 
-            // Verifica se é um nome de função (começa com __)
+            // Verificar se é um identificador de função (__nome)
             if (c == '_') {
-                int c2 = proximo_char();
-                if (c2 == '_') {
-                    buffer[i++] = c2;
+                if ((c = proximo_char()) == '_') {
+                    buffer[i++] = c;
+                    // Após __, deve ter pelo menos um caractere alfanumérico
+                    c = proximo_char();
+                    if (!isalnum(c)) {
+                        sprintf(buffer, "Nome de função inválido na linha %d. Esperado caractere alfanumérico após '__'.", linha_atual);
+                        return criar_token(TOKEN_ERRO, buffer, linha_atual);
+                    }
+                    buffer[i++] = c;
+                    // Continuar lendo o resto do nome da função
                     while ((isalnum(c = proximo_char()) || c == '_') && i < 255) {
                         buffer[i++] = c;
                     }
                     devolver_char(c);
                     buffer[i] = '\0';
                     return criar_token(TOKEN_ID_FUNCAO, buffer, linha_atual);
+                } else {
+                    // Underscore único não é válido
+                    devolver_char(c);
+                    sprintf(buffer, "Identificador inválido '_' na linha %d.", linha_atual);
+                    return criar_token(TOKEN_ERRO, buffer, linha_atual);
                 }
-                devolver_char(c2); // Não era o segundo '_', devolve
             }
 
-            // Se não for nome de função, trata como palavra reservada ou erro
+            // Continuar lendo palavra normal
             while ((isalnum(c = proximo_char()) || c == '_') && i < 255) {
                 buffer[i++] = c;
             }
             devolver_char(c);
             buffer[i] = '\0';
 
+            // Verificar se é palavra reservada
             TipoToken tipo_reservado = verificar_palavra_reservada(buffer);
             if (tipo_reservado != TOKEN_ERRO) {
                 return criar_token(tipo_reservado, buffer, linha_atual);
             }
 
-            // Se não for nada conhecido, é um erro
+            // Se não é palavra reservada, é um identificador inválido
             char erro_msg[512];
             sprintf(erro_msg, "Identificador ou palavra reservada inválida '%s' na linha %d.", buffer, linha_atual);
             return criar_token(TOKEN_ERRO, erro_msg, linha_atual);
         }
-        // --- FIM DA ALTERAÇÃO PARA IDENTIFICADORES E FUNÇÕES ---
 
+        // Caractere não reconhecido
         char erro_msg[512];
-        if (isprint(c)) sprintf(erro_msg, "Caractere não reconhecido '%c' na linha %d.", c, linha_atual);
-        else sprintf(erro_msg, "Caractere não reconhecido (ASCII: %d) na linha %d.", c, linha_atual);
+        if (isprint(c)) {
+            sprintf(erro_msg, "Caractere não reconhecido '%c' na linha %d.", c, linha_atual);
+        } else {
+            sprintf(erro_msg, "Caractere não reconhecido (ASCII: %d) na linha %d.", c, linha_atual);
+        }
         return criar_token(TOKEN_ERRO, erro_msg, linha_atual);
     }
+
     return criar_token(TOKEN_FIM_DE_ARQUIVO, "EOF", linha_atual);
 }
