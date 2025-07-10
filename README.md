@@ -47,4 +47,4 @@ gcc -o compilador main.c compilador.c
 
 ## 📄 Licença
 
-Distribuído sob a licença MIT.
+Distribuído sob a licença GNU GENERAL PUBLIC LICENSE.
