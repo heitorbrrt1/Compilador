@@ -22,7 +22,7 @@ int main() {
 
         if (token.tipo == TOKEN_ERRO) {
             fflush(stdout);
-            fprintf(stderr, "\nERRO LEXICO: %s\n", token.lexema);
+            fprintf(stderr, "\nERRO LÉXICO: %s\n", token.lexema);
             destruir_token(token);
             break;
         }
