@@ -13,6 +13,7 @@ long memoria_pico_utilizada = 0;
 int alerta_memoria_emitido = 0;
 
 void* alocar_memoria(size_t tamanho) {
+    // Verifica se a nova alocação ultrapassará o limite.
     if (memoria_alocada_atual + tamanho > MEMORIA_TOTAL_DISPONIVEL) {
         fprintf(stderr, "ERRO FATAL: Tentativa de alocação excede a memória máxima. Memória Insuficiente.\n");
         exit(EXIT_FAILURE);
@@ -23,10 +24,12 @@ void* alocar_memoria(size_t tamanho) {
         exit(EXIT_FAILURE);
     }
     memoria_alocada_atual += tamanho;
+    // Atualiza o pico de memória, se necessário.    
     if (memoria_alocada_atual > memoria_pico_utilizada) {
         memoria_pico_utilizada = memoria_alocada_atual;
     }
     double percentual_uso = (double)memoria_alocada_atual / MEMORIA_TOTAL_DISPONIVEL;
+    // Emite um alerta se o uso de memória passar de 90%.    
     if (percentual_uso >= 0.9 && percentual_uso < 1.0 && !alerta_memoria_emitido) {
         printf("ALERTA: Uso de memória atingiu %.2f%% da capacidade total.\n", percentual_uso * 100);
         alerta_memoria_emitido = 1;
@@ -36,8 +39,8 @@ void* alocar_memoria(size_t tamanho) {
 
 void liberar_memoria(void* ptr, size_t tamanho) {
     if (ptr != NULL) {
-        free(ptr);
-        memoria_alocada_atual -= tamanho;
+        free(ptr); // Libera a memória.
+        memoria_alocada_atual -= tamanho; // Decrementa o contador de memória em uso.
     }
 }
 
@@ -54,6 +57,7 @@ void exibir_status_memoria() {
 FILE* arquivo_fonte;
 int linha_atual = 1;
 
+// Retorna a string correspondente a um tipo de token.
 const char* tipo_token_para_str(TipoToken tipo) {
     switch (tipo) {
         case TOKEN_PRINCIPAL: return "PALAVRA_RESERVADA_PRINCIPAL";
@@ -105,17 +109,17 @@ Token criar_token(TipoToken tipo, char* lexema, int linha) {
     token.tipo = tipo;
     token.linha = linha;
     size_t len = strlen(lexema) + 1;
-    token.lexema = (char*) alocar_memoria(len);
+    token.lexema = (char*) alocar_memoria(len); // Usa a função de alocação segura.
     strncpy(token.lexema, lexema, len);
     return token;
 }
 
 void destruir_token(Token token) {
     if (token.lexema) {
-        liberar_memoria(token.lexema, strlen(token.lexema) + 1);
+        liberar_memoria(token.lexema, strlen(token.lexema) + 1); // Usa a função de liberação segura.
     }
 }
-
+// Funções auxiliares para ler caracteres do arquivo.
 int proximo_char() {
     int c = fgetc(arquivo_fonte);
     if (c == '\n') {
@@ -131,6 +135,7 @@ void devolver_char(int c) {
     ungetc(c, arquivo_fonte);
 }
 
+// Verifica se uma string é uma palavra reservada.
 TipoToken verificar_palavra_reservada(const char* str) {
     if (strcmp(str, "principal") == 0) return TOKEN_PRINCIPAL;
     if (strcmp(str, "funcao") == 0) return TOKEN_FUNCAO;
@@ -146,6 +151,7 @@ TipoToken verificar_palavra_reservada(const char* str) {
     return TOKEN_ERRO;
 }
 
+// Função principal do analisador léxico.
 Token obter_proximo_token() {
     int c;
     char buffer[256];
@@ -153,6 +159,8 @@ Token obter_proximo_token() {
 
     while ((c = proximo_char()) != EOF) {
         if (isspace(c)) continue;
+
+        // --- Tratamento de Símbolos Simples ---
         switch (c) {
             case '+': return criar_token(TOKEN_OP_SOMA, "+", linha_atual);
             case '-': return criar_token(TOKEN_OP_SUBTRACAO, "-", linha_atual);
@@ -173,6 +181,7 @@ Token obter_proximo_token() {
                 else { devolver_char(c); return criar_token(TOKEN_ATRIBUICAO, "=", linha_atual); }
             case '<':
                 c = proximo_char();
+                // --- Tratamento de Símbolos Compostos (ex: ==, <=, <>) ---
                 if (c == '=') return criar_token(TOKEN_OP_MENOR_IGUAL, "<=", linha_atual);
                 else if (c == '>') return criar_token(TOKEN_OP_DIFERENTE, "<>", linha_atual);
                 else { devolver_char(c); return criar_token(TOKEN_OP_MENOR, "<", linha_atual); }
@@ -193,6 +202,7 @@ Token obter_proximo_token() {
                     sprintf(buffer, "Caractere inesperado: '|' na linha %d", linha_atual);
                     return criar_token(TOKEN_ERRO, buffer, linha_atual);
                 }
+            // --- Tratamento de Literais de Texto ---    
             case '"':
                 i = 0;
                 while((c = proximo_char()) != '"' && c != EOF && i < 255) buffer[i++] = c;
@@ -201,7 +211,7 @@ Token obter_proximo_token() {
                 return criar_token(TOKEN_LITERAL_TEXTO, buffer, linha_atual);
             default: ;
         }
-
+        // --- Tratamento de Identificadores de Variáveis (começam com '!') ---
         if (c == '!') {
             i = 0;
             buffer[i++] = c;
@@ -216,7 +226,7 @@ Token obter_proximo_token() {
             buffer[i] = '\0';
             return criar_token(TOKEN_ID_VARIAVEL, buffer, linha_atual);
         }
-
+        // --- Tratamento de Literais Numéricos ---
         if (isdigit(c)) {
             i = 0;
             int tem_ponto = 0;
@@ -232,7 +242,7 @@ Token obter_proximo_token() {
             buffer[i] = '\0';
             return criar_token(TOKEN_LITERAL_NUMERO, buffer, linha_atual);
         }
-
+        // --- Tratamento de Palavras Reservadas e Identificadores de Função (começam com '__') ---
         if (isalpha(c) || c == '_') {
             i = 0;
             buffer[i++] = c;
@@ -271,6 +281,7 @@ Token obter_proximo_token() {
             }
 
             char erro_msg[512];
+            // Se nenhum dos casos acima tratar o caractere, é um erro.
             sprintf(erro_msg, "Identificador ou palavra reservada inválida '%s' na linha %d.", buffer, linha_atual);
             return criar_token(TOKEN_ERRO, erro_msg, linha_atual);
         }
