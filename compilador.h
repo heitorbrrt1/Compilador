@@ -1,9 +1,14 @@
+/**
+ * @author Heitor Barreto e Vinícius Lopes
+ * @date Julho de 2025
+ */
+
 #ifndef COMPILADOR_H
 #define COMPILADOR_H
 
 #include <stdio.h>
 
-// --- CONTROLE DE MEMORIA ---
+/* --- CONTROLE DE MEMORIA --- */ 
 
 /**
  * @brief Aloca uma quantidade de memória de forma segura.
@@ -30,7 +35,7 @@ void liberar_memoria(void* ptr, size_t tamanho);
  */
 void exibir_status_memoria();
 
-// --- ANALISADOR LEXICO ---
+/* --- ANALISADOR LEXICO --- */
 
 /**
  * @enum TipoToken
@@ -61,8 +66,8 @@ typedef struct {
     int linha;
 } Token;
 
-extern FILE* arquivo_fonte; // Ponteiro para o arquivo de código-fonte sendo analisado.
-extern int linha_atual;     // Contador da linha atual no arquivo-fonte.
+extern FILE* arquivo_fonte; /* Ponteiro para o arquivo de código-fonte sendo analisado. */
+extern int linha_atual;     /* Contador da linha atual no arquivo-fonte. */
 
 /**
  * @brief Converte um TipoToken para sua representação em string.
