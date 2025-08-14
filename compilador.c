@@ -94,6 +94,8 @@ const char* tipo_token_para_str(TipoToken tipo) {
         case TOKEN_OP_E: return "OPERADOR_E_LOGICO";
         case TOKEN_OP_OU: return "OPERADOR_OU_LOGICO";
         case TOKEN_ATRIBUICAO: return "OPERADOR_ATRIBUICAO";
+        case TOKEN_INCREMENT: return "OPERADOR_INCREMENTO";
+        case TOKEN_DECREMENT: return "OPERADOR_DECREMENTO";
         case TOKEN_PARENTESES_ESQ: return "PARENTESES_ESQUERDO";
         case TOKEN_PARENTESES_DIR: return "PARENTESES_DIREITO";
         case TOKEN_CHAVES_ESQ: return "CHAVES_ESQUERDA";
@@ -165,10 +167,14 @@ Token obter_proximo_token() {
     while ((c = proximo_char()) != EOF) {
         if (isspace(c)) continue;
 
-        /* --- Tratamento de Símbolos Simples --- */
+        /* --- Tratamento de Símbolos Simples e Compostos --- */
         switch (c) {
-            case '+': return criar_token(TOKEN_OP_SOMA, "+", linha_atual);
-            case '-': return criar_token(TOKEN_OP_SUBTRACAO, "-", linha_atual);
+            case '+':
+                if ((c = proximo_char()) == '+') return criar_token(TOKEN_INCREMENT, "++", linha_atual);
+                else { devolver_char(c); return criar_token(TOKEN_OP_SOMA, "+", linha_atual); }
+            case '-':
+                if ((c = proximo_char()) == '-') return criar_token(TOKEN_DECREMENT, "--", linha_atual);
+                else { devolver_char(c); return criar_token(TOKEN_OP_SUBTRACAO, "-", linha_atual); }
             case '*': return criar_token(TOKEN_OP_MULTIPLICACAO, "*", linha_atual);
             case '/': return criar_token(TOKEN_OP_DIVISAO, "/", linha_atual);
             case '^': return criar_token(TOKEN_OP_EXPONENCIACAO, "^", linha_atual);
@@ -186,7 +192,6 @@ Token obter_proximo_token() {
                 else { devolver_char(c); return criar_token(TOKEN_ATRIBUICAO, "=", linha_atual); }
             case '<':
                 c = proximo_char();
-                /* --- Tratamento de Símbolos Compostos (ex: ==, <=, <>) --- */
                 if (c == '=') return criar_token(TOKEN_OP_MENOR_IGUAL, "<=", linha_atual);
                 else if (c == '>') return criar_token(TOKEN_OP_DIFERENTE, "<>", linha_atual);
                 else { devolver_char(c); return criar_token(TOKEN_OP_MENOR, "<", linha_atual); }

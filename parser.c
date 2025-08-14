@@ -202,6 +202,16 @@ int esperar_token(TipoToken tipo_esperado) {
     }
 }
 
+int verificar_ausencia_token(TipoToken token_nao_esperado, const char* contexto) {
+    if (token_atual.tipo == token_nao_esperado) {
+        fprintf(stderr, "ERRO SINTÁTICO: Token '%s' não deveria estar presente após %s na linha %d.\n",
+                token_atual.lexema, contexto, token_atual.linha);
+        erro_sintatico_encontrado = 1;
+        return 0;
+    }
+    return 1;
+}
+
 int analisar_programa() {
     /* Programa = (Funcao | Declaracao)* */
     while (token_atual.tipo != TOKEN_FIM_DE_ARQUIVO && !erro_sintatico_encontrado) {
@@ -286,13 +296,7 @@ int analisar_funcao() {
     }
 
     /* Corpo da função */
-    if (!esperar_token(TOKEN_CHAVES_ESQ)) return 0;
-    empilhar_delimitador('{', token_atual.linha - 1);
-
     if (!analisar_bloco(nome_funcao)) return 0;
-
-    if (!esperar_token(TOKEN_CHAVES_DIR)) return 0;
-    if (!desempilhar_delimitador('}', token_atual.linha - 1)) return 0;
 
     return 1;
 }
@@ -393,11 +397,6 @@ int analisar_comando(const char* funcao_escopo) {
                     return 0;
                 }
 
-                /* Verifica se variável foi declarada */
-                if (buscar_variavel(token_atual.lexema) == NULL) {
-                    printf("ALERTA: Variável '%s' não foi declarada na linha %d.\n", token_atual.lexema, token_atual.linha);
-                }
-
                 consumir_token();
 
                 if (token_atual.tipo == TOKEN_VIRGULA) {
@@ -409,6 +408,7 @@ int analisar_comando(const char* funcao_escopo) {
 
             if (!esperar_token(TOKEN_PARENTESES_DIR)) return 0;
             if (!desempilhar_delimitador(')', token_atual.linha - 1)) return 0;
+
             if (!esperar_token(TOKEN_PONTO_VIRGULA)) return 0;
             break;
 
@@ -422,10 +422,6 @@ int analisar_comando(const char* funcao_escopo) {
                 if (token_atual.tipo == TOKEN_LITERAL_TEXTO) {
                     consumir_token();
                 } else if (token_atual.tipo == TOKEN_ID_VARIAVEL) {
-                    /* Verifica se variável foi declarada */
-                    if (buscar_variavel(token_atual.lexema) == NULL) {
-                        printf("ALERTA: Variável '%s' não foi declarada na linha %d.\n", token_atual.lexema, token_atual.linha);
-                    }
                     consumir_token();
                 } else {
                     fprintf(stderr, "ERRO SINTÁTICO: Esperado texto ou variável no comando escreva na linha %d.\n", token_atual.linha);
@@ -455,6 +451,9 @@ int analisar_comando(const char* funcao_escopo) {
             if (!esperar_token(TOKEN_PARENTESES_DIR)) return 0;
             if (!desempilhar_delimitador(')', token_atual.linha - 1)) return 0;
 
+            /* Verificar que não há ponto e vírgula após se(...) */
+            if (!verificar_ausencia_token(TOKEN_PONTO_VIRGULA, "condição do 'se'")) return 0;
+
             /* Comando verdadeiro */
             if (token_atual.tipo == TOKEN_CHAVES_ESQ) {
                 if (!analisar_bloco(funcao_escopo)) return 0;
@@ -480,9 +479,6 @@ int analisar_comando(const char* funcao_escopo) {
 
             /* Inicialização */
             if (token_atual.tipo == TOKEN_ID_VARIAVEL) {
-                if (buscar_variavel(token_atual.lexema) == NULL) {
-                    printf("ALERTA: Variável '%s' não foi declarada na linha %d.\n", token_atual.lexema, token_atual.linha);
-                }
                 consumir_token();
                 if (!esperar_token(TOKEN_ATRIBUICAO)) return 0;
                 if (!analisar_expressao()) return 0;
@@ -496,16 +492,37 @@ int analisar_comando(const char* funcao_escopo) {
 
             /* Incremento */
             if (token_atual.tipo == TOKEN_ID_VARIAVEL) {
-                if (buscar_variavel(token_atual.lexema) == NULL) {
-                    printf("ALERTA: Variável '%s' não foi declarada na linha %d.\n", token_atual.lexema, token_atual.linha);
+                /* Variável seguida de atribuição ou incremento/decremento */
+                char nome_var[256];
+                strcpy(nome_var, token_atual.lexema);
+                consumir_token();
+
+                if (token_atual.tipo == TOKEN_ATRIBUICAO) {
+                    consumir_token();
+                    if (!analisar_expressao()) return 0;
+                } else if (token_atual.tipo == TOKEN_INCREMENT || token_atual.tipo == TOKEN_DECREMENT) {
+                    consumir_token(); /* Consome ++ ou -- */
+                } else {
+                    fprintf(stderr, "ERRO SINTÁTICO: Esperado atribuição ou incremento/decremento na terceira parte do 'para' na linha %d.\n", token_atual.linha);
+                    erro_sintatico_encontrado = 1;
+                    return 0;
+                }
+            } else if (token_atual.tipo == TOKEN_INCREMENT || token_atual.tipo == TOKEN_DECREMENT) {
+                /* Incremento/decremento antes da variável */
+                consumir_token();
+                if (token_atual.tipo != TOKEN_ID_VARIAVEL) {
+                    fprintf(stderr, "ERRO SINTÁTICO: Esperado nome de variável após incremento/decremento na linha %d.\n", token_atual.linha);
+                    erro_sintatico_encontrado = 1;
+                    return 0;
                 }
                 consumir_token();
-                if (!esperar_token(TOKEN_ATRIBUICAO)) return 0;
-                if (!analisar_expressao()) return 0;
             }
 
             if (!esperar_token(TOKEN_PARENTESES_DIR)) return 0;
             if (!desempilhar_delimitador(')', token_atual.linha - 1)) return 0;
+
+            /* Verificar que não há ponto e vírgula após para(...) */
+            if (!verificar_ausencia_token(TOKEN_PONTO_VIRGULA, "declaração do 'para'")) return 0;
 
             /* Corpo do laço */
             if (token_atual.tipo == TOKEN_CHAVES_ESQ) {
@@ -523,9 +540,6 @@ int analisar_comando(const char* funcao_escopo) {
 
         case TOKEN_ID_VARIAVEL:
             /* Atribuição */
-            if (buscar_variavel(token_atual.lexema) == NULL) {
-                printf("ALERTA: Variável '%s' não foi declarada na linha %d.\n", token_atual.lexema, token_atual.linha);
-            }
             consumir_token();
             if (!esperar_token(TOKEN_ATRIBUICAO)) return 0;
             if (!analisar_expressao()) return 0;
@@ -567,8 +581,13 @@ int analisar_comando(const char* funcao_escopo) {
 }
 
 int analisar_bloco(const char* funcao_escopo) {
-    if (!esperar_token(TOKEN_CHAVES_ESQ)) return 0;
-    empilhar_delimitador('{', token_atual.linha - 1);
+    if (token_atual.tipo != TOKEN_CHAVES_ESQ) {
+         fprintf(stderr, "ERRO SINTÁTICO: Esperado '{' para iniciar o bloco na linha %d.\n", token_atual.linha);
+         erro_sintatico_encontrado = 1;
+         return 0;
+    }
+    empilhar_delimitador('{', token_atual.linha);
+    consumir_token();
 
     while (token_atual.tipo != TOKEN_CHAVES_DIR && token_atual.tipo != TOKEN_FIM_DE_ARQUIVO && !erro_sintatico_encontrado) {
         if (token_atual.tipo == TOKEN_INTEIRO || token_atual.tipo == TOKEN_TEXTO || token_atual.tipo == TOKEN_DECIMAL) {
@@ -585,41 +604,43 @@ int analisar_bloco(const char* funcao_escopo) {
 }
 
 int analisar_expressao() {
-    /* Expressão simples - aceita números, variáveis, textos e operações básicas */
-    if (token_atual.tipo == TOKEN_LITERAL_NUMERO ||
-        token_atual.tipo == TOKEN_LITERAL_TEXTO ||
-        token_atual.tipo == TOKEN_ID_VARIAVEL) {
+    /* Expressão: Termo ((+|-) Termo)* */
+    if (!analisar_termo()) return 0;
 
-        if (token_atual.tipo == TOKEN_ID_VARIAVEL) {
-            if (buscar_variavel(token_atual.lexema) == NULL) {
-                printf("ALERTA: Variável '%s' não foi declarada na linha %d.\n", token_atual.lexema, token_atual.linha);
-            }
-        }
-
+    while (token_atual.tipo == TOKEN_OP_SOMA || token_atual.tipo == TOKEN_OP_SUBTRACAO) {
         consumir_token();
+        if (!analisar_termo()) return 0;
+    }
 
-        /* Operações matemáticas */
-        while (token_atual.tipo == TOKEN_OP_SOMA || token_atual.tipo == TOKEN_OP_SUBTRACAO ||
-               token_atual.tipo == TOKEN_OP_MULTIPLICACAO || token_atual.tipo == TOKEN_OP_DIVISAO ||
-               token_atual.tipo == TOKEN_OP_EXPONENCIACAO) {
-            consumir_token();
+    return 1;
+}
 
-            if (token_atual.tipo == TOKEN_LITERAL_NUMERO || token_atual.tipo == TOKEN_ID_VARIAVEL) {
-                if (token_atual.tipo == TOKEN_ID_VARIAVEL) {
-                    if (buscar_variavel(token_atual.lexema) == NULL) {
-                        printf("ALERTA: Variável '%s' não foi declarada na linha %d.\n", token_atual.lexema, token_atual.linha);
-                    }
-                }
-                consumir_token();
-            } else {
-                fprintf(stderr, "ERRO SINTÁTICO: Esperado operando após operador na linha %d.\n", token_atual.linha);
-                erro_sintatico_encontrado = 1;
-                return 0;
-            }
-        }
+int analisar_termo() {
+    /* Termo: Fator ((*|/|^) Fator)* */
+    if (!analisar_fator()) return 0;
 
+    while (token_atual.tipo == TOKEN_OP_MULTIPLICACAO ||
+           token_atual.tipo == TOKEN_OP_DIVISAO ||
+           token_atual.tipo == TOKEN_OP_EXPONENCIACAO) {
+        consumir_token();
+        if (!analisar_fator()) return 0;
+    }
+
+    return 1;
+}
+
+int analisar_fator() {
+    /* Fator: NUMERO | VARIAVEL | TEXTO | FUNCAO(...) | (Expressao) */
+
+    if (token_atual.tipo == TOKEN_LITERAL_NUMERO || token_atual.tipo == TOKEN_LITERAL_TEXTO) {
+        consumir_token();
         return 1;
-    } else if (token_atual.tipo == TOKEN_ID_FUNCAO) {
+    }
+    else if (token_atual.tipo == TOKEN_ID_VARIAVEL) {
+        consumir_token();
+        return 1;
+    }
+    else if (token_atual.tipo == TOKEN_ID_FUNCAO) {
         /* Chamada de função */
         consumir_token();
         if (!esperar_token(TOKEN_PARENTESES_ESQ)) return 0;
@@ -640,10 +661,22 @@ int analisar_expressao() {
 
         if (!esperar_token(TOKEN_PARENTESES_DIR)) return 0;
         if (!desempilhar_delimitador(')', token_atual.linha - 1)) return 0;
-
         return 1;
-    } else {
-        fprintf(stderr, "ERRO SINTÁTICO: Expressão inválida na linha %d.\n", token_atual.linha);
+    }
+    else if (token_atual.tipo == TOKEN_PARENTESES_ESQ) {
+        /* (Expressão) */
+        empilhar_delimitador('(', token_atual.linha);
+        consumir_token();
+
+        if (!analisar_expressao()) return 0;
+
+        if (!esperar_token(TOKEN_PARENTESES_DIR)) return 0;
+        if (!desempilhar_delimitador(')', token_atual.linha - 1)) return 0;
+        return 1;
+    }
+    else {
+        fprintf(stderr, "ERRO SINTÁTICO: Fator inválido '%s' na linha %d.\n",
+                token_atual.lexema, token_atual.linha);
         erro_sintatico_encontrado = 1;
         return 0;
     }

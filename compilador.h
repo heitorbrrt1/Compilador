@@ -49,9 +49,10 @@ typedef enum {
     TOKEN_LITERAL_NUMERO, TOKEN_LITERAL_TEXTO, TOKEN_OP_SOMA, TOKEN_OP_SUBTRACAO,
     TOKEN_OP_MULTIPLICACAO, TOKEN_OP_DIVISAO, TOKEN_OP_EXPONENCIACAO, TOKEN_OP_IGUAL,
     TOKEN_OP_DIFERENTE, TOKEN_OP_MENOR, TOKEN_OP_MENOR_IGUAL, TOKEN_OP_MAIOR, TOKEN_OP_MAIOR_IGUAL,
-    TOKEN_OP_E, TOKEN_OP_OU, TOKEN_ATRIBUICAO, TOKEN_PARENTESES_ESQ, TOKEN_PARENTESES_DIR,
-    TOKEN_CHAVES_ESQ, TOKEN_CHAVES_DIR, TOKEN_COLCHETES_ESQ, TOKEN_COLCHETES_DIR,
-    TOKEN_PONTO_VIRGULA, TOKEN_VIRGULA, TOKEN_PONTO, TOKEN_FIM_DE_ARQUIVO, TOKEN_ERRO
+    TOKEN_OP_E, TOKEN_OP_OU, TOKEN_ATRIBUICAO, TOKEN_INCREMENT, TOKEN_DECREMENT,
+    TOKEN_PARENTESES_ESQ, TOKEN_PARENTESES_DIR, TOKEN_CHAVES_ESQ, TOKEN_CHAVES_DIR,
+    TOKEN_COLCHETES_ESQ, TOKEN_COLCHETES_DIR, TOKEN_PONTO_VIRGULA, TOKEN_VIRGULA,
+    TOKEN_PONTO, TOKEN_FIM_DE_ARQUIVO, TOKEN_ERRO
 } TipoToken;
 
 /**
@@ -236,10 +237,22 @@ int analisar_comando(const char* funcao_escopo);
 int analisar_bloco(const char* funcao_escopo);
 
 /**
- * @brief Analisa uma expressão matemática ou relacional.
+ * @brief Analisa uma expressão matemática completa (precedência baixa: + e -).
  * @return 1 se bem-sucedida, 0 se erro
  */
 int analisar_expressao();
+
+/**
+ * @brief Analisa um termo matemático (precedência média: *, /, ^).
+ * @return 1 se bem-sucedida, 0 se erro
+ */
+int analisar_termo();
+
+/**
+ * @brief Analisa um fator matemático (precedência alta: números, variáveis, parênteses).
+ * @return 1 se bem-sucedida, 0 se erro
+ */
+int analisar_fator();
 
 /**
  * @brief Analisa uma condição (para se, para).
@@ -282,6 +295,21 @@ void empilhar_delimitador(char delimitador, int linha);
  * @return 1 se balanceado, 0 se erro
  */
 int desempilhar_delimitador(char delimitador_fechamento, int linha);
+
+/**
+ * @brief Analisa um comando de incremento/decremento (++, --).
+ * @param funcao_escopo Nome da função atual
+ * @return 1 se bem-sucedida, 0 se erro
+ */
+int analisar_incremento_decremento(const char* funcao_escopo);
+
+/**
+ * @brief Verifica se um token não deve estar presente (ex: ponto e vírgula após se/para).
+ * @param token_nao_esperado Tipo de token que não deveria estar presente
+ * @param contexto Descrição do contexto para mensagem de erro
+ * @return 1 se correto (token não presente), 0 se erro
+ */
+int verificar_ausencia_token(TipoToken token_nao_esperado, const char* contexto);
 
 /**
  * @brief Libera a pilha de balanceamento.
