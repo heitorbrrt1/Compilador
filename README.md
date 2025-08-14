@@ -20,21 +20,21 @@ O compilador realiza a análise de um código-fonte em duas fases principais:
 
 ### Funcionalidades do Analisador Sintático
 
-- [cite\_start]Valida a estrutura geral do programa, verificando a existência de uma função `principal` obrigatória[cite: 2].
+- Valida a estrutura geral do programa, verificando a existência de uma função `principal` obrigatória.
 - Analisa a sintaxe de declarações de funções (`funcao __nome(...)`) e de variáveis (`tipo !nome;`), incluindo múltiplos declaradores na mesma linha e limitadores de tamanho para `texto` e `decimal`.
 - Verifica a correta formação de comandos como `leia`, `escreva`, `se`/`senao` e `para`.
-- [cite\_start]Realiza o **balanceamento de delimitadores** (`()`, `{}`, `[]`) para garantir que todos sejam abertos e fechados corretamente[cite: 2].
-- [cite\_start]Constrói e exibe uma **Tabela de Símbolos** com todas as variáveis declaradas, seus tipos e escopos[cite: 2].
-- [cite\_start]Gera mensagens de erro sintático com o número da linha e o tipo de token esperado quando uma regra gramatical é violada[cite: 2].
+- Realiza o **balanceamento de delimitadores** (`()`, `{}`, `[]`) para garantir que todos sejam abertos e fechados corretamente.
+- Constrói e exibe uma **Tabela de Símbolos** com todas as variáveis declaradas, seus tipos e escopos.
+- Gera mensagens de erro sintático com o número da linha e o tipo de token esperado quando uma regra gramatical é violada.
 
 ## 💾 Controle de Memória
 
-- [cite\_start]Aloca memória dinamicamente via `alocar_memoria(size_t)` e libera com `liberar_memoria(ptr, size)`[cite: 1, 2].
-- [cite\_start]Monitora o uso atual e o pico de memória utilizada durante a execução[cite: 1].
-- [cite\_start]Limite configurável em **2048 KB** (via `#define MEMORIA_MAXIMA_KB`)[cite: 1, 2].
-- [cite\_start]Emite um **alerta** quando o uso de memória ultrapassa 90% da capacidade[cite: 1].
-- [cite\_start]Interrompe a execução com erro fatal caso a alocação exceda o limite[cite: 1].
-- [cite\_start]Ao final, exibe um relatório de consumo: total disponível, pico utilizado e memória restante[cite: 1].
+- Aloca memória dinamicamente via `alocar_memoria(size_t)` e libera com `liberar_memoria(ptr, size)`.
+- Monitora o uso atual e o pico de memória utilizada durante a execução.
+- Limite configurável em **2048 KB** (via `#define MEMORIA_MAXIMA_KB`).
+- Emite um **alerta** quando o uso de memória ultrapassa 90% da capacidade.
+- Interrompe a execução com erro fatal caso a alocação exceda o limite.
+- Ao final, exibe um relatório de consumo: total disponível, pico utilizado e memória restante.
 
 ## ⚙️ Estrutura dos Arquivos
 
