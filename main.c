@@ -1,49 +1,64 @@
 /**
- * @author Heitor Barreto e Vinícius Lopes
+* @author Heitor Barreto e Vinícius Lopes
  * @date Julho de 2025
  */
 
 #include <stdio.h>
 #include "compilador.h"
-/* #include <windows.h> */
+#include <windows.h>
 
 int main() {
-    /**
-    * SetConsoleOutputCP(CP_UTF8);
-    * SetConsoleCP(CP_UTF8);
-    */    
+
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+
     arquivo_fonte = fopen("codigo_fonte.txt", "r");
     if (arquivo_fonte == NULL) {
         perror("Erro ao abrir o arquivo 'codigo_fonte.txt'");
         return 1;
     }
 
-    printf("Análise Léxica: \n\n");
-    printf("%-10s | %-30s | %s\n", "LINHA", "TIPO DE TOKEN", "LEXEMA");
-    printf("-----------------------------------------------------------------\n");
-    /* Loop principal: continua pegando tokens até o fim do arquivo ou um erro. */
-    for (;;) {
-        Token token = obter_proximo_token();
-        printf("%-10d | %-30s | %s\n", token.linha, tipo_token_para_str(token.tipo), token.lexema);
+    printf("=== ANÁLISE LÉXICO-SINTÁTICA ===\n\n");
 
-        /* Se um erro léxico for encontrado, exibe a mensagem de erro e para. */
-        if (token.tipo == TOKEN_ERRO) {
-            fflush(stdout);
-            fprintf(stderr, "\nERRO LÉXICO: %s\n", token.lexema);
-            destruir_token(token);
-            break;
-        }
-        /* Se o token de fim de arquivo for encontrado, o processo terminou com sucesso. */
-        if (token.tipo == TOKEN_FIM_DE_ARQUIVO) {
-            destruir_token(token);
-            break;
-        }
-        /* Libera a memória alocada para o token atual antes de pegar o próximo. */
-        destruir_token(token);
+    /* Inicializa o analisador sintático */
+    inicializar_parser();
+
+    /* Realiza a análise sintática completa */
+    printf("Iniciando análise sintática...\n");
+    int sucesso = analisar_programa();
+
+    /* Libera o último token */
+    if (token_atual.lexema) {
+        destruir_token(token_atual);
     }
 
-    fclose(arquivo_fonte); /* Fecha o arquivo. */
-    exibir_status_memoria(); /* Exibe o relatório de memória. */
+    /* Exibe resultados */
+    if (sucesso && !erro_sintatico_encontrado) {
+        printf("\n✓ ANÁLISE SINTÁTICA CONCLUÍDA COM SUCESSO!\n");
+        printf("✓ Programa sintaticamente correto.\n");
+    } else {
+        printf("\n✗ ANÁLISE SINTÁTICA FALHOU!\n");
+        printf("✗ Erros sintáticos encontrados no programa.\n");
+    }
 
-    return 0;
+    /* Exibe tabela de símbolos */
+    if (tabela_simbolos && tabela_simbolos->total_entradas > 0) {
+        exibir_tabela_simbolos();
+    }
+
+    /* Limpa recursos */
+    fclose(arquivo_fonte);
+
+    if (tabela_simbolos) {
+        destruir_tabela_simbolos();
+    }
+
+    if (pilha_balanceamento) {
+        destruir_pilha_balanceamento();
+    }
+
+    /* Exibe relatório de memória */
+    exibir_status_memoria();
+
+    return sucesso ? 0 : 1;
 }

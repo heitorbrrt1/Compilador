@@ -8,7 +8,7 @@
 
 #include <stdio.h>
 
-/* --- CONTROLE DE MEMORIA --- */ 
+/* --- CONTROLE DE MEMORIA --- */
 
 /**
  * @brief Aloca uma quantidade de memória de forma segura.
@@ -100,5 +100,192 @@ void destruir_token(Token token);
  * @return O próximo token do arquivo.
  */
 Token obter_proximo_token();
+
+/* --- TABELA DE SÍMBOLOS --- */
+
+/**
+ * @enum TipoDado
+ * @brief Tipos de dados suportados pela linguagem.
+ */
+typedef enum {
+    TIPO_INTEIRO,
+    TIPO_TEXTO,
+    TIPO_DECIMAL
+} TipoDado;
+
+/**
+ * @struct LimitadorTamanho
+ * @brief Estrutura para armazenar limitadores de tamanho para texto e decimal.
+ */
+typedef struct {
+    int tamanho1;  /* Para texto: tamanho total. Para decimal: casas antes do ponto */
+    int tamanho2;  /* Para decimal: casas depois do ponto. Para texto: não usado */
+} LimitadorTamanho;
+
+/**
+ * @struct EntradaTabela
+ * @brief Entrada individual na tabela de símbolos.
+ */
+typedef struct EntradaTabela {
+    char* nome;
+    TipoDado tipo;
+    char* valor;
+    char* funcao_escopo;
+    LimitadorTamanho limitador;
+    int tem_limitador;
+    struct EntradaTabela* proxima;
+} EntradaTabela;
+
+/**
+ * @struct TabelaSimbolos
+ * @brief Tabela de símbolos implementada como lista ligada.
+ */
+typedef struct {
+    EntradaTabela* primeira;
+    int total_entradas;
+} TabelaSimbolos;
+
+extern TabelaSimbolos* tabela_simbolos;
+
+/**
+ * @brief Inicializa a tabela de símbolos.
+ */
+void inicializar_tabela_simbolos();
+
+/**
+ * @brief Adiciona uma variável na tabela de símbolos.
+ * @param nome Nome da variável
+ * @param tipo Tipo da variável
+ * @param funcao_escopo Nome da função onde foi declarada
+ * @param limitador Limitadores de tamanho (se aplicável)
+ * @param tem_limitador Se tem limitadores definidos
+ */
+void adicionar_variavel(const char* nome, TipoDado tipo, const char* funcao_escopo,
+                       LimitadorTamanho limitador, int tem_limitador);
+
+/**
+ * @brief Busca uma variável na tabela de símbolos.
+ * @param nome Nome da variável a buscar
+ * @return Ponteiro para a entrada ou NULL se não encontrada
+ */
+EntradaTabela* buscar_variavel(const char* nome);
+
+/**
+ * @brief Exibe o conteúdo da tabela de símbolos.
+ */
+void exibir_tabela_simbolos();
+
+/**
+ * @brief Libera toda a memória da tabela de símbolos.
+ */
+void destruir_tabela_simbolos();
+
+/* --- ANALISADOR SINTÁTICO --- */
+
+extern Token token_atual;
+extern int erro_sintatico_encontrado;
+
+/**
+ * @brief Inicializa o analisador sintático.
+ */
+void inicializar_parser();
+
+/**
+ * @brief Consome o token atual e avança para o próximo.
+ */
+void consumir_token();
+
+/**
+ * @brief Verifica se o token atual é do tipo esperado e consome.
+ * @param tipo_esperado Tipo de token esperado
+ * @return 1 se correto, 0 se erro
+ */
+int esperar_token(TipoToken tipo_esperado);
+
+/**
+ * @brief Inicia a análise sintática do programa.
+ * @return 1 se análise bem-sucedida, 0 se erro
+ */
+int analisar_programa();
+
+/**
+ * @brief Analisa uma declaração de função.
+ * @return 1 se bem-sucedida, 0 se erro
+ */
+int analisar_funcao();
+
+/**
+ * @brief Analisa uma declaração de variável.
+ * @param funcao_escopo Nome da função atual
+ * @return 1 se bem-sucedida, 0 se erro
+ */
+int analisar_declaracao_variavel(const char* funcao_escopo);
+
+/**
+ * @brief Analisa um comando (leia, escreva, se, para, etc.).
+ * @param funcao_escopo Nome da função atual
+ * @return 1 se bem-sucedida, 0 se erro
+ */
+int analisar_comando(const char* funcao_escopo);
+
+/**
+ * @brief Analisa um bloco de comandos entre chaves.
+ * @param funcao_escopo Nome da função atual
+ * @return 1 se bem-sucedida, 0 se erro
+ */
+int analisar_bloco(const char* funcao_escopo);
+
+/**
+ * @brief Analisa uma expressão matemática ou relacional.
+ * @return 1 se bem-sucedida, 0 se erro
+ */
+int analisar_expressao();
+
+/**
+ * @brief Analisa uma condição (para se, para).
+ * @return 1 se bem-sucedida, 0 se erro
+ */
+int analisar_condicao();
+
+/**
+ * @brief Verifica balanceamento de delimitadores.
+ */
+typedef struct {
+    char delimitador;
+    int linha;
+} ItemBalanceamento;
+
+typedef struct {
+    ItemBalanceamento* itens;
+    int topo;
+    int capacidade;
+} PilhaBalanceamento;
+
+extern PilhaBalanceamento* pilha_balanceamento;
+
+/**
+ * @brief Inicializa a pilha de balanceamento.
+ */
+void inicializar_pilha_balanceamento();
+
+/**
+ * @brief Empilha um delimitador para verificação de balanceamento.
+ * @param delimitador Caractere delimitador
+ * @param linha Linha onde foi encontrado
+ */
+void empilhar_delimitador(char delimitador, int linha);
+
+/**
+ * @brief Desempilha e verifica balanceamento.
+ * @param delimitador_fechamento Delimitador de fechamento
+ * @param linha Linha atual
+ * @return 1 se balanceado, 0 se erro
+ */
+int desempilhar_delimitador(char delimitador_fechamento, int linha);
+
+/**
+ * @brief Libera a pilha de balanceamento.
+ */
+void destruir_pilha_balanceamento();
 
 #endif

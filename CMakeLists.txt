@@ -6,4 +6,5 @@ set(CMAKE_C_STANDARD 11)
 add_executable(compilador main.c
         compilador.c
         main.c
-        compilador.h)
+        compilador.h
+        parser.c)
