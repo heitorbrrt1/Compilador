@@ -18,7 +18,37 @@ int main() {
         return 1;
     }
 
-    printf("=== ANÁLISE LÉXICO-SINTÁTICA ===\n\n");
+    /* --- ETAPA 1: EXIBIÇÃO DA ANÁLISE LÉXICA --- */
+    printf("=== ANÁLISE LÉXICA ===\n\n");
+    printf("%-10s | %-30s | %s\n", "LINHA", "TIPO DE TOKEN", "LEXEMA");
+    printf("-----------------------------------------------------------------\n");
+
+    Token token_lexico;
+    do {
+        token_lexico = obter_proximo_token();
+        printf("%-10d | %-30s | %s\n", token_lexico.linha, tipo_token_para_str(token_lexico.tipo), token_lexico.lexema);
+
+        // Se encontrar um erro léxico, para e não continua para o sintático.
+        if (token_lexico.tipo == TOKEN_ERRO) {
+            fflush(stdout); // Garante que a tabela seja impressa antes da mensagem de erro
+            fprintf(stderr, "\nERRO LÉXICO: %s\n", token_lexico.lexema);
+            destruir_token(token_lexico);
+            fclose(arquivo_fonte);
+            exibir_status_memoria();
+            return 1; // Termina o programa com erro
+        }
+        destruir_token(token_lexico);
+    } while (token_lexico.tipo != TOKEN_FIM_DE_ARQUIVO);
+
+    printf("\n\n");
+
+    /* --- ETAPA 2: ANÁLISE SINTÁTICA --- */
+
+    // REBOBINA o arquivo e reseta a linha para o analisador sintático começar do início
+    rewind(arquivo_fonte);
+    linha_atual = 1;
+
+    printf("=== ANÁLISE SINTÁTICA ===\n\n");
 
     /* Inicializa o analisador sintático */
     inicializar_parser();
@@ -36,14 +66,14 @@ int main() {
     if (sucesso && !erro_sintatico_encontrado) {
         printf("\n✓ ANÁLISE SINTÁTICA CONCLUÍDA COM SUCESSO!\n");
         printf("✓ Programa sintaticamente correto.\n");
+
+        /* Exibe tabela de símbolos APENAS se não houver erros */
+        if (tabela_simbolos && tabela_simbolos->total_entradas > 0) {
+            exibir_tabela_simbolos();
+        }
     } else {
         printf("\n✗ ANÁLISE SINTÁTICA FALHOU!\n");
         printf("✗ Erros sintáticos encontrados no programa.\n");
-    }
-
-    /* Exibe tabela de símbolos */
-    if (tabela_simbolos && tabela_simbolos->total_entradas > 0) {
-        exibir_tabela_simbolos();
     }
 
     /* Limpa recursos */
@@ -60,5 +90,5 @@ int main() {
     /* Exibe relatório de memória */
     exibir_status_memoria();
 
-    return sucesso ? 0 : 1;
+    return (sucesso && !erro_sintatico_encontrado) ? 0 : 1;
 }

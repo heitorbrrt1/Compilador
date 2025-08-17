@@ -152,6 +152,7 @@ int desempilhar_delimitador(char delimitador_fechamento, int linha) {
         case '}': esperado = '{'; break;
         case ']': esperado = '['; break;
         case '"': esperado = '"'; break;
+        default: ;
     }
 
     if (delimitador_abertura != esperado) {
@@ -279,16 +280,36 @@ int analisar_funcao() {
         empilhar_delimitador('(', token_atual.linha - 1);
 
         /* Parâmetros (se houver) */
-        if (token_atual.tipo == TOKEN_INTEIRO || token_atual.tipo == TOKEN_TEXTO || token_atual.tipo == TOKEN_DECIMAL) {
+        if (token_atual.tipo != TOKEN_PARENTESES_DIR) {
             do {
-                if (!analisar_declaracao_variavel(nome_funcao)) return 0;
+                TipoDado tipo_param;
+                if (token_atual.tipo == TOKEN_INTEIRO) tipo_param = TIPO_INTEIRO;
+                else if (token_atual.tipo == TOKEN_TEXTO) tipo_param = TIPO_TEXTO;
+                else if (token_atual.tipo == TOKEN_DECIMAL) tipo_param = TIPO_DECIMAL;
+                else {
+                    fprintf(stderr, "ERRO SINTÁTICO: Esperado tipo de dado para o parâmetro na linha %d.\n", token_atual.linha);
+                    erro_sintatico_encontrado = 1;
+                    return 0;
+                }
+                consumir_token(); // Consome o tipo (inteiro, texto, etc.)
 
+                if (token_atual.tipo != TOKEN_ID_VARIAVEL) {
+                    fprintf(stderr, "ERRO SINTÁTICO: Esperado nome de variável para o parâmetro na linha %d.\n", token_atual.linha);
+                    erro_sintatico_encontrado = 1;
+                    return 0;
+                }
+
+                // Adiciona o parâmetro à tabela de símbolos (sem limitador, conforme especificação)
+                adicionar_variavel(token_atual.lexema, tipo_param, nome_funcao, (LimitadorTamanho){0, 0}, 0);
+                consumir_token(); // Consome o nome da variável
+
+                // Se houver uma vírgula, espera o próximo parâmetro
                 if (token_atual.tipo == TOKEN_VIRGULA) {
                     consumir_token();
                 } else {
-                    break;
+                    break; // Sai do loop se não houver mais vírgulas
                 }
-            } while (token_atual.tipo == TOKEN_INTEIRO || token_atual.tipo == TOKEN_TEXTO || token_atual.tipo == TOKEN_DECIMAL);
+            } while (1);
         }
 
         if (!esperar_token(TOKEN_PARENTESES_DIR)) return 0;
@@ -417,31 +438,26 @@ int analisar_comando(const char* funcao_escopo) {
             if (!esperar_token(TOKEN_PARENTESES_ESQ)) return 0;
             empilhar_delimitador('(', token_atual.linha - 1);
 
-            /* Lista de textos e variáveis */
-            do {
-                if (token_atual.tipo == TOKEN_LITERAL_TEXTO) {
-                    consumir_token();
-                } else if (token_atual.tipo == TOKEN_ID_VARIAVEL) {
-                    consumir_token();
-                } else {
-                    fprintf(stderr, "ERRO SINTÁTICO: Esperado texto ou variável no comando escreva na linha %d.\n", token_atual.linha);
-                    erro_sintatico_encontrado = 1;
-                    return 0;
-                }
+            // Verifica se existem argumentos para serem analisados
+            if (token_atual.tipo != TOKEN_PARENTESES_DIR) {
+                do {
+                    // Agora, qualquer expressão válida pode ser um argumento
+                    if (!analisar_expressao()) return 0;
 
-                if (token_atual.tipo == TOKEN_VIRGULA) {
-                    consumir_token();
-                } else {
-                    break;
-                }
-            } while (1);
+                    if (token_atual.tipo == TOKEN_VIRGULA) {
+                        consumir_token();
+                    } else {
+                        break;
+                    }
+                } while (1);
+            }
 
             if (!esperar_token(TOKEN_PARENTESES_DIR)) return 0;
             if (!desempilhar_delimitador(')', token_atual.linha - 1)) return 0;
             if (!esperar_token(TOKEN_PONTO_VIRGULA)) return 0;
             break;
 
-        case TOKEN_SE:
+            case TOKEN_SE:
             consumir_token();
             if (!esperar_token(TOKEN_PARENTESES_ESQ)) return 0;
             empilhar_delimitador('(', token_atual.linha - 1);

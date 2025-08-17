@@ -231,7 +231,7 @@ Token obter_proximo_token() {
                 return criar_token(TOKEN_ERRO, buffer, linha_atual);
             }
             buffer[i++] = c;
-            while (isalnum(c = proximo_char()) && i < 255) buffer[i++] = c;
+            while ((isalnum(c = proximo_char()) || c == '_') && i < 255) buffer[i++] = c;
             devolver_char(c);
             buffer[i] = '\0';
             return criar_token(TOKEN_ID_VARIAVEL, buffer, linha_atual);
