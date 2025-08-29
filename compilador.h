@@ -316,4 +316,94 @@ int verificar_ausencia_token(TipoToken token_nao_esperado, const char* contexto)
  */
 void destruir_pilha_balanceamento();
 
+/* --- ANALISADOR SEMÂNTICO --- */
+
+extern int erro_semantico_encontrado;
+extern int alerta_semantico_emitido;
+
+/**
+ * @brief Inicializa o analisador semântico.
+ */
+void inicializar_analisador_semantico();
+
+/**
+ * @brief Libera recursos do analisador semântico.
+ */
+void destruir_analisador_semantico();
+
+/**
+ * @brief Adiciona uma função à tabela de funções declaradas.
+ * @param nome Nome da função
+ * @param linha Linha onde foi declarada
+ */
+void adicionar_funcao_declarada(const char* nome, int linha);
+
+/**
+ * @brief Marca uma função como chamada.
+ * @param nome Nome da função
+ */
+void marcar_funcao_chamada(const char* nome);
+
+/**
+ * @brief Verifica se uma variável foi declarada.
+ * @param nome_variavel Nome da variável
+ * @param linha Linha atual
+ * @return 1 se declarada, 0 caso contrário
+ */
+int verificar_variavel_declarada(const char* nome_variavel, int linha);
+
+/**
+ * @brief Verifica se uma função foi declarada.
+ * @param nome_funcao Nome da função
+ * @param linha Linha atual
+ * @return 1 se declarada, 0 caso contrário
+ */
+int verificar_funcao_declarada(const char* nome_funcao, int linha);
+
+/**
+ * @brief Verifica compatibilidade de tipos em atribuição.
+ * @param nome_variavel Nome da variável
+ * @param tipo_valor Tipo do valor sendo atribuído
+ * @param linha Linha atual
+ * @return 1 se compatível, 0 caso contrário
+ */
+int verificar_atribuicao_tipos(const char* nome_variavel, TipoDado tipo_valor, int linha);
+
+/**
+ * @brief Verifica compatibilidade de tipos em comparação.
+ * @param tipo1 Tipo do primeiro operando
+ * @param tipo2 Tipo do segundo operando
+ * @param operador Operador de comparação
+ * @param linha Linha atual
+ * @return 1 se compatível, 0 caso contrário
+ */
+int verificar_comparacao_tipos(TipoDado tipo1, TipoDado tipo2, const char* operador, int linha);
+
+/**
+ * @brief Analisa semânticamente uma atribuição.
+ * @param nome_variavel Nome da variável
+ * @param valor Valor sendo atribuído
+ * @param tipo_valor Tipo do token do valor
+ * @param linha Linha atual
+ */
+void analisar_semantica_atribuicao(const char* nome_variavel, const char* valor, TipoToken tipo_valor, int linha);
+
+/**
+ * @brief Analisa semânticamente uma comparação.
+ * @param operando1 Primeiro operando
+ * @param tipo1 Tipo do primeiro operando
+ * @param operando2 Segundo operando
+ * @param tipo2 Tipo do segundo operando
+ * @param operador Operador de comparação
+ * @param linha Linha atual
+ */
+void analisar_semantica_comparacao(const char* operando1, TipoToken tipo1,
+                                   const char* operando2, TipoToken tipo2,
+                                   const char* operador, int linha);
+
+/**
+ * @brief Verifica funções não utilizadas e exibe relatório.
+ */
+void exibir_relatorio_semantico();
+
 #endif

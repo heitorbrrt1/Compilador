@@ -7,4 +7,5 @@ add_executable(compilador main.c
         compilador.c
         main.c
         compilador.h
-        parser.c)
+        parser.c
+        semantico.c)

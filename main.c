@@ -71,6 +71,14 @@ int main() {
         if (tabela_simbolos && tabela_simbolos->total_entradas > 0) {
             exibir_tabela_simbolos();
         }
+
+        /* --- ETAPA 3: ANÁLISE SEMÂNTICA --- */
+        printf("\n=== ANÁLISE SEMÂNTICA ===\n\n");
+        printf("Executando verificações semânticas...\n");
+
+        /* Exibe relatório semântico */
+        exibir_relatorio_semantico();
+
     } else {
         printf("\n✗ ANÁLISE SINTÁTICA FALHOU!\n");
         printf("✗ Erros sintáticos encontrados no programa.\n");
@@ -86,6 +94,9 @@ int main() {
     if (pilha_balanceamento) {
         destruir_pilha_balanceamento();
     }
+
+    /* Limpa recursos semânticos */
+    destruir_analisador_semantico();
 
     /* Exibe relatório de memória */
     exibir_status_memoria();

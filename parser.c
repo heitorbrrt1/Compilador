@@ -178,6 +178,7 @@ void destruir_pilha_balanceamento() {
 void inicializar_parser() {
     inicializar_tabela_simbolos();
     inicializar_pilha_balanceamento();
+    inicializar_analisador_semantico();
     erro_sintatico_encontrado = 0;
     modulo_principal_encontrado = 0;
     token_atual = obter_proximo_token();
@@ -252,10 +253,12 @@ int analisar_programa() {
 
 int analisar_funcao() {
     char nome_funcao[256];
+    int linha_funcao = linha_atual;
 
     if (token_atual.tipo == TOKEN_PRINCIPAL) {
         strcpy(nome_funcao, "principal");
         modulo_principal_encontrado = 1;
+        adicionar_funcao_declarada("principal", linha_funcao);
         consumir_token();
 
         /* principal() não tem parâmetros */
@@ -274,6 +277,7 @@ int analisar_funcao() {
         }
 
         strcpy(nome_funcao, token_atual.lexema);
+        adicionar_funcao_declarada(nome_funcao, linha_funcao);
         consumir_token();
 
         if (!esperar_token(TOKEN_PARENTESES_ESQ)) return 0;
@@ -353,7 +357,7 @@ int analisar_declaracao_variavel(const char* funcao_escopo) {
         strcpy(nome_variavel, token_atual.lexema);
         consumir_token();
 
-        /* Verifica limitadores de tamanho */
+                /* Verifica limitadores de tamanho */
         if (token_atual.tipo == TOKEN_COLCHETES_ESQ) {
             empilhar_delimitador('[', token_atual.linha);
             consumir_token();
@@ -364,18 +368,34 @@ int analisar_declaracao_variavel(const char* funcao_escopo) {
                 return 0;
             }
 
-            limitador.tamanho1 = atoi(token_atual.lexema);
             tem_limitador = 1;
-            consumir_token();
 
-            if (tipo == TIPO_DECIMAL && token_atual.tipo == TOKEN_PONTO) {
-                consumir_token();
-                if (token_atual.tipo != TOKEN_LITERAL_NUMERO) {
-                    fprintf(stderr, "ERRO SINTÁTICO: Esperado número após ponto no limitador decimal na linha %d.\n", token_atual.linha);
-                    erro_sintatico_encontrado = 1;
-                    return 0;
+            if (tipo == TIPO_DECIMAL) {
+                char* ponto = strchr(token_atual.lexema, '.');
+                if (ponto) {
+                    // Caso o lexema seja "10.2" (um token único)
+                    limitador.tamanho1 = atoi(token_atual.lexema);
+                    limitador.tamanho2 = atoi(ponto + 1);
+                    consumir_token(); // Consome o token "10.2"
+                } else {
+                    // Caso o lexema seja apenas a parte inteira "10"
+                    limitador.tamanho1 = atoi(token_atual.lexema);
+                    consumir_token(); // Consome o "10"
+                    // E verifica se o próximo token é um ponto
+                    if (token_atual.tipo == TOKEN_PONTO) {
+                        consumir_token(); // Consome o "."
+                        if (token_atual.tipo != TOKEN_LITERAL_NUMERO) {
+                            fprintf(stderr, "ERRO SINTÁTICO: Esperado número após ponto no limitador decimal na linha %d.\n", token_atual.linha);
+                            erro_sintatico_encontrado = 1;
+                            return 0;
+                        }
+                        limitador.tamanho2 = atoi(token_atual.lexema);
+                        consumir_token(); // Consome a parte decimal "2"
+                    }
                 }
-                limitador.tamanho2 = atoi(token_atual.lexema);
+            } else {
+                // Lógica original para tipos texto e inteiro
+                limitador.tamanho1 = atoi(token_atual.lexema);
                 consumir_token();
             }
 
@@ -418,6 +438,9 @@ int analisar_comando(const char* funcao_escopo) {
                     return 0;
                 }
 
+                // Verificação semântica da variável
+                verificar_variavel_declarada(token_atual.lexema, token_atual.linha);
+
                 consumir_token();
 
                 if (token_atual.tipo == TOKEN_VIRGULA) {
@@ -457,7 +480,7 @@ int analisar_comando(const char* funcao_escopo) {
             if (!esperar_token(TOKEN_PONTO_VIRGULA)) return 0;
             break;
 
-            case TOKEN_SE:
+        case TOKEN_SE:
             consumir_token();
             if (!esperar_token(TOKEN_PARENTESES_ESQ)) return 0;
             empilhar_delimitador('(', token_atual.linha - 1);
@@ -556,15 +579,38 @@ int analisar_comando(const char* funcao_escopo) {
 
         case TOKEN_ID_VARIAVEL:
             /* Atribuição */
+        {
+            char nome_var[256];
+            strcpy(nome_var, token_atual.lexema);
+            int linha_atribuicao = token_atual.linha;
             consumir_token();
             if (!esperar_token(TOKEN_ATRIBUICAO)) return 0;
+
+            // Captura informações do valor para análise semântica
+            char valor[256];
+            TipoToken tipo_valor = token_atual.tipo;
+            strcpy(valor, token_atual.lexema);
+
             if (!analisar_expressao()) return 0;
+
+            // Análise semântica da atribuição
+            analisar_semantica_atribuicao(nome_var, valor, tipo_valor, linha_atribuicao);
+
             if (!esperar_token(TOKEN_PONTO_VIRGULA)) return 0;
+        }
             break;
 
         case TOKEN_ID_FUNCAO:
             /* Chamada de função */
+        {
+            char nome_funcao[256];
+            strcpy(nome_funcao, token_atual.lexema);
+            int linha_chamada = token_atual.linha;
             consumir_token();
+
+            // Verificação semântica da função
+            verificar_funcao_declarada(nome_funcao, linha_chamada);
+
             if (!esperar_token(TOKEN_PARENTESES_ESQ)) return 0;
             empilhar_delimitador('(', token_atual.linha - 1);
 
@@ -584,18 +630,10 @@ int analisar_comando(const char* funcao_escopo) {
             if (!esperar_token(TOKEN_PARENTESES_DIR)) return 0;
             if (!desempilhar_delimitador(')', token_atual.linha - 1)) return 0;
             if (!esperar_token(TOKEN_PONTO_VIRGULA)) return 0;
+        }
             break;
-
-        default:
-            fprintf(stderr, "ERRO SINTÁTICO: Comando não reconhecido '%s' na linha %d.\n",
-                    token_atual.lexema, token_atual.linha);
-            erro_sintatico_encontrado = 1;
-            return 0;
     }
-
-    return 1;
 }
-
 int analisar_bloco(const char* funcao_escopo) {
     if (token_atual.tipo != TOKEN_CHAVES_ESQ) {
          fprintf(stderr, "ERRO SINTÁTICO: Esperado '{' para iniciar o bloco na linha %d.\n", token_atual.linha);
@@ -653,12 +691,21 @@ int analisar_fator() {
         return 1;
     }
     else if (token_atual.tipo == TOKEN_ID_VARIAVEL) {
+        // Verificação semântica da variável
+        verificar_variavel_declarada(token_atual.lexema, token_atual.linha);
         consumir_token();
         return 1;
     }
     else if (token_atual.tipo == TOKEN_ID_FUNCAO) {
         /* Chamada de função */
+        char nome_funcao[256];
+        strcpy(nome_funcao, token_atual.lexema);
+        int linha_chamada = token_atual.linha;
         consumir_token();
+
+        // Verificação semântica da função
+        verificar_funcao_declarada(nome_funcao, linha_chamada);
+
         if (!esperar_token(TOKEN_PARENTESES_ESQ)) return 0;
         empilhar_delimitador('(', token_atual.linha - 1);
 
@@ -698,7 +745,14 @@ int analisar_fator() {
     }
 }
 
+
 int analisar_condicao() {
+    /* Captura informações do primeiro operando */
+    char operando1[256];
+    TipoToken tipo_operando1 = token_atual.tipo;
+    strcpy(operando1, token_atual.lexema);
+    int linha_comparacao = token_atual.linha;
+
     /* Primeira expressão */
     if (!analisar_expressao()) return 0;
 
@@ -707,14 +761,29 @@ int analisar_condicao() {
         token_atual.tipo == TOKEN_OP_MENOR || token_atual.tipo == TOKEN_OP_MENOR_IGUAL ||
         token_atual.tipo == TOKEN_OP_MAIOR || token_atual.tipo == TOKEN_OP_MAIOR_IGUAL) {
 
+        char operador[4];
+        strcpy(operador, token_atual.lexema);
         consumir_token();
+
+        /* Captura informações do segundo operando */
+        char operando2[256];
+        TipoToken tipo_operando2 = token_atual.tipo;
+        strcpy(operando2, token_atual.lexema);
 
         /* Segunda expressão */
         if (!analisar_expressao()) return 0;
 
+        /* Verificação semântica da comparação */
+        analisar_semantica_comparacao(operando1, tipo_operando1, operando2, tipo_operando2, operador, linha_comparacao);
+
         /* Operadores lógicos (opcional) */
         while (token_atual.tipo == TOKEN_OP_E || token_atual.tipo == TOKEN_OP_OU) {
             consumir_token();
+
+            /* Captura próximo operando */
+            strcpy(operando1, token_atual.lexema);
+            tipo_operando1 = token_atual.tipo;
+            linha_comparacao = token_atual.linha;
 
             /* Nova condição relacional */
             if (!analisar_expressao()) return 0;
@@ -723,8 +792,17 @@ int analisar_condicao() {
                 token_atual.tipo == TOKEN_OP_MENOR || token_atual.tipo == TOKEN_OP_MENOR_IGUAL ||
                 token_atual.tipo == TOKEN_OP_MAIOR || token_atual.tipo == TOKEN_OP_MAIOR_IGUAL) {
 
+                strcpy(operador, token_atual.lexema);
                 consumir_token();
+
+                strcpy(operando2, token_atual.lexema);
+                tipo_operando2 = token_atual.tipo;
+
                 if (!analisar_expressao()) return 0;
+
+                /* Verificação semântica da comparação */
+                analisar_semantica_comparacao(operando1, tipo_operando1, operando2, tipo_operando2, operador, linha_comparacao);
+
             } else {
                 fprintf(stderr, "ERRO SINTÁTICO: Esperado operador relacional após operador lógico na linha %d.\n", token_atual.linha);
                 erro_sintatico_encontrado = 1;

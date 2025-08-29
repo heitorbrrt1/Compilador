@@ -213,10 +213,24 @@ Token obter_proximo_token() {
                     return criar_token(TOKEN_ERRO, buffer, linha_atual);
                 }
             /* --- Tratamento de Literais de Texto --- */    
+                /* --- Tratamento de Literais de Texto --- */
             case '"':
                 i = 0;
-                while((c = proximo_char()) != '"' && c != EOF && i < 255) buffer[i++] = c;
-                if (c == EOF) return criar_token(TOKEN_ERRO, "String literal não fechada", linha_atual);
+                int linha_inicio_string = linha_atual;
+                // Adicionamos a condição c != '\n' para parar a leitura na quebra de linha
+                while((c = proximo_char()) != '"' && c != '\n' && c != EOF && i < 255) {
+                    buffer[i++] = c;
+                }
+
+                // Se o laço parou por quebra de linha ou fim de arquivo, a string não foi fechada.
+                if (c == '\n' || c == EOF) {
+                    if (c == '\n') {
+                        devolver_char(c); // Devolve o '\n' para não afetar a contagem da próxima linha.
+                    }
+                    sprintf(buffer, "ERRO LÉXICO: String literal iniciada na linha %d não foi fechada na mesma linha.", linha_inicio_string);
+                    return criar_token(TOKEN_ERRO, buffer, linha_inicio_string);
+                }
+
                 buffer[i] = '\0';
                 return criar_token(TOKEN_LITERAL_TEXTO, buffer, linha_atual);
             default: ;
